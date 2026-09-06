@@ -9,7 +9,31 @@
 <body>
   <div class="app">
     <nav class="sidebar">
-      <h1>Grocery Manager</h1>
+      <h1 class="sidebar-brand">
+        <span class="sidebar-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffaa40"/>
+                <stop offset="100%" stop-color="#9c40ff"/>
+              </linearGradient>
+              <filter id="logoGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <rect x="2" y="6" width="20" height="14" rx="3" stroke="url(#logoGrad)" stroke-width="1.8" fill="none"/>
+            <path d="M7 6V4a3 3 0 0 1 6 0v2" stroke="url(#logoGrad)" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M10 12v5" stroke="url(#logoGrad)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M14 12v5" stroke="url(#logoGrad)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M6 10h4l1 4h6l1-4h4" stroke="url(#logoGrad)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </span>
+        Grocery Manager
+      </h1>
       <ul class="nav-list">
         <li><a href="#" data-screen="dashboard" class="nav-link active">Dashboard</a></li>
         <li><a href="#" data-screen="inventory" class="nav-link">Inventory</a></li>
@@ -21,18 +45,21 @@
 
     <main class="content">
       <section id="screen-dashboard" class="screen active">
-        <h2>Dashboard</h2>
+        <div class="screen-header">
+          <h2>Dashboard</h2>
+          <button id="dashboardActionBtn" class="btn-primary">Action</button>
+        </div>
         <div class="stats-grid">
           <div class="stat-card">
-            <span class="stat-value" id="statTotal">0</span>
+            <span class="stat-value number-ticker" id="statTotal">0</span>
             <span class="stat-label">Total Items</span>
           </div>
           <div class="stat-card">
-            <span class="stat-value" id="statLow">0</span>
+            <span class="stat-value number-ticker" id="statLow">0</span>
             <span class="stat-label">Low Stock</span>
           </div>
           <div class="stat-card">
-            <span class="stat-value" id="statPending">0</span>
+            <span class="stat-value number-ticker" id="statPending">0</span>
             <span class="stat-label">Pending Reorder</span>
           </div>
         </div>
@@ -61,6 +88,13 @@
             <div class="name-field-row">
               <input type="text" id="name" required />
               <button type="button" id="suggestDetailsBtn" class="btn-suggest">Suggest details</button>
+            </div>
+          </div>
+          <div class="beam-stage">
+            <svg id="aiBeam" class="ai-beam" aria-hidden="true"></svg>
+            <div class="ai-node" id="aiBeamNode">
+              <span class="ai-node-icon">✨</span>
+              <span class="ai-node-label">Gemini API</span>
             </div>
           </div>
           <div class="form-group">

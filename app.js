@@ -34,9 +34,57 @@ const unitInput = el('unit');
 const minimumQuantityInput = el('minimumQuantity');
 const cancelFormBtn = el('cancelFormBtn');
 const suggestDetailsBtn = el('suggestDetailsBtn');
+const aiBeam = el('aiBeam');
+const aiBeamNode = el('aiBeamNode');
 
 function getStatus(item) {
   return item.quantity < item.minimumQuantity ? 'LOW_STOCK' : 'OK';
+}
+
+const tickerAnimations = new WeakMap();
+
+function animateNumberTicker(node, value, options = {}) {
+  if (!node) return;
+  const { startValue = 0, direction = 'up', delay = 0, decimalPlaces = 0, duration = 1200 } = options;
+
+  const previous = tickerAnimations.get(node);
+  if (previous) {
+    cancelAnimationFrame(previous.raf);
+    clearTimeout(previous.timeout);
+  }
+
+  node.textContent = Intl.NumberFormat('en-US', {
+    minimumFractionDigits: decimalPlaces,
+    maximumFractionDigits: decimalPlaces,
+  }).format(startValue);
+
+  const run = () => {
+    const begin = performance.now();
+    const from = direction === 'down' ? value : startValue;
+    const to = direction === 'down' ? startValue : value;
+
+    function step(now) {
+      const t = Math.min((now - begin) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = from + (to - from) * eased;
+      node.textContent = Intl.NumberFormat('en-US', {
+        minimumFractionDigits: decimalPlaces,
+        maximumFractionDigits: decimalPlaces,
+      }).format(Number(current.toFixed(decimalPlaces)));
+      if (t < 1) {
+        const raf = requestAnimationFrame(step);
+        tickerAnimations.set(node, { ...tickerAnimations.get(node), raf });
+      } else {
+        tickerAnimations.delete(node);
+      }
+    }
+
+    const raf = requestAnimationFrame(step);
+    tickerAnimations.set(node, { raf });
+  };
+
+  const timeout = setTimeout(run, delay * 1000);
+  tickerAnimations.set(node, { timeout });
 }
 
 function getLowStock() {
@@ -46,7 +94,25 @@ function getLowStock() {
 function switchScreen(screenId) {
   currentScreen = screenId;
 
-  navLinks.forEach((link) => {
+function handleMagicCardMove(e) {
+  const card = e.target.closest('.item-card');
+  if (!card) return;
+  const rect = card.getBoundingClientRect();
+  card.style.setProperty('--magic-x', e.clientX - rect.left + 'px');
+  card.style.setProperty('--magic-y', e.clientY - rect.top + 'px');
+}
+
+function handleMagicCardLeave(e) {
+  const card = e.target.closest('.item-card');
+  if (!card) return;
+  card.style.setProperty('--magic-x', '-200px');
+  card.style.setProperty('--magic-y', '-200px');
+}
+
+document.addEventListener('mousemove', handleMagicCardMove);
+document.addEventListener('mouseleave', handleMagicCardLeave, true);
+
+navLinks.forEach((link) => {
     link.classList.toggle('active', link.dataset.screen === screenId);
   });
 
@@ -72,6 +138,10 @@ function renderDashboard() {
   el('statLow').textContent = low;
   el('statPending').textContent = pending;
 
+  animateNumberTicker(el('statTotal'), total);
+  animateNumberTicker(el('statLow'), low);
+  animateNumberTicker(el('statPending'), pending);
+
   dashboardLowList.innerHTML = '';
   const lowItems = getLowStock();
 
@@ -81,10 +151,12 @@ function renderDashboard() {
   }
 
   dashboardEmpty.style.display = 'none';
-  lowItems.forEach((item) => {
+  lowItems.forEach((item, index) => {
     const li = document.createElement('li');
-    li.className = 'item-card';
+    li.className = 'item-card animated-list-item';
+    li.style.setProperty('--stagger-i', String(index));
     li.innerHTML = `
+      <div class="border-beam" aria-hidden="true"></div>
       <div class="item-main">
         <div class="item-title">${escapeHtml(item.name)}</div>
         <div class="item-meta">${escapeHtml(item.category || '')} · ${escapeHtml(item.unit || '')} · ${item.quantity} / min ${item.minimumQuantity}</div>
@@ -126,7 +198,9 @@ function renderInventory(filterText = '') {
     const status = getStatus(item);
     const li = document.createElement('li');
     li.className = 'item-card';
+    const beam = status === 'LOW_STOCK' ? '<div class="border-beam" aria-hidden="true"></div>' : '';
     li.innerHTML = `
+      ${beam}
       <div class="item-main">
         <div class="item-title">${escapeHtml(item.name)}</div>
         <div class="item-meta">${escapeHtml(item.category || '')} · ${escapeHtml(item.unit || '')} · Qty: ${item.quantity} / Min: ${item.minimumQuantity}</div>
@@ -317,6 +391,65 @@ function clearFormNote() {
   if (existing) existing.remove();
 }
 
+const AI_BEAM_GRADIENT_ID = 'aiBeamGradient';
+
+function renderAiBeam() {
+  if (!aiBeam) return;
+  const formRect = itemForm.getBoundingClientRect();
+  const fromRect = suggestDetailsBtn.getBoundingClientRect();
+  const toRect = aiBeamNode.getBoundingClientRect();
+
+  const startX = fromRect.right - formRect.left;
+  const startY = fromRect.top + fromRect.height / 2 - formRect.top;
+  const endX = toRect.left - formRect.left;
+  const endY = toRect.top + toRect.height / 2 - formRect.top;
+
+  const curvature = -110;
+  const controlY = startY + curvature;
+  const midX = (startX + endX) / 2;
+  const d = `M ${startX},${startY} Q ${midX},${controlY} ${endX},${endY}`;
+
+  aiBeam.setAttribute('viewBox', `0 0 ${formRect.width} ${aiBeam.parentElement.clientHeight}`);
+  aiBeam.innerHTML = `
+    <defs>
+      <linearGradient id="${AI_BEAM_GRADIENT_ID}" gradientUnits="userSpaceOnUse" x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}">
+        <stop offset="0%" stop-color="#ffaa40" stop-opacity="0" />
+        <stop offset="10%" stop-color="#ffaa40" stop-opacity="1" />
+        <stop offset="50%" stop-color="#9c40ff" stop-opacity="1" />
+        <stop offset="90%" stop-color="#9c40ff" stop-opacity="0" />
+      </linearGradient>
+      <radialGradient id="aiBeamDotGradient" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffd9a8" />
+        <stop offset="40%" stop-color="#ffaa40" />
+        <stop offset="100%" stop-color="#9c40ff" />
+      </radialGradient>
+      <path id="aiBeamMotionPath" d="${d}" />
+    </defs>
+    <path class="beam-path-bg" d="${d}" />
+    <path class="beam-path-fg" d="${d}" />
+    <circle class="beam-dot" r="4">
+      <animateMotion dur="1.6s" repeatCount="indefinite" rotate="auto">
+        <mpath href="#aiBeamMotionPath" />
+      </animateMotion>
+    </circle>
+  `;
+}
+
+function startAiBeam() {
+  if (!aiBeam) return;
+  renderAiBeam();
+  aiBeam.classList.add('active');
+  if (aiBeamNode) aiBeamNode.classList.add('active');
+  window.addEventListener('resize', renderAiBeam);
+}
+
+function stopAiBeam() {
+  if (!aiBeam) return;
+  aiBeam.classList.remove('active');
+  if (aiBeamNode) aiBeamNode.classList.remove('active');
+  window.removeEventListener('resize', renderAiBeam);
+}
+
 function showFormNote(message, type = 'error') {
   clearFormNote();
   const note = document.createElement('p');
@@ -339,6 +472,7 @@ async function suggestDetails() {
   clearFormNote();
   suggestDetailsBtn.disabled = true;
   suggestDetailsBtn.textContent = 'Thinking...';
+  startAiBeam();
 
   const prompt = `Given a single grocery item name, suggest its category, its usual unit, and a reasonable minimum stock threshold for a household.
 
@@ -407,6 +541,7 @@ Output: Respond with ONLY valid JSON, no extra text, in exactly this shape:
   } finally {
     suggestDetailsBtn.disabled = false;
     suggestDetailsBtn.textContent = 'Suggest details';
+    stopAiBeam();
   }
 }
 
@@ -439,12 +574,22 @@ itemForm.addEventListener('submit', saveItem);
 cancelFormBtn.addEventListener('click', cancelForm);
 suggestDetailsBtn.addEventListener('click', suggestDetails);
 
+el('dashboardActionBtn').addEventListener('click', () => {
+  alert('Dashboard action button clicked!');
+});
+
 searchInput.addEventListener('input', () => {
   renderInventory(searchInput.value);
 });
 
-markAllOrderedBtn.addEventListener('click', markAllOrdered);
-el('markOrderedBtn').addEventListener('click', markOrdered);
+markAllOrderedBtn.addEventListener('click', (e) => {
+  fireMiniConfetti(e.currentTarget);
+  markAllOrdered();
+});
+el('markOrderedBtn').addEventListener('click', (e) => {
+  fireMiniConfetti(e.currentTarget);
+  markOrdered();
+});
 
 el('copyMessageBtn').addEventListener('click', async () => {
   const text = messageText.textContent || '';
@@ -480,4 +625,75 @@ function seedData() {
 }
 
 seedData();
+function applyShimmerToHeadings() {
+  const targets = document.querySelectorAll(
+    '#screen-dashboard h2, #screen-inventory h2, #screen-reorder h2, #screen-message h2'
+  );
+  targets.forEach((h) => h.classList.add('text-shimmer'));
+}
+
+function fireMiniConfetti(button) {
+  if (!button) return;
+  const rect = button.getBoundingClientRect();
+  const origin = {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
+
+  const colors = ['#ffaa40', '#9c40ff', '#FE8BBB', '#ffd166', '#4ade80'];
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  ctx.scale(dpr, dpr);
+
+  const particles = [];
+  const count = 60;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2.5 + Math.random() * 4;
+    particles.push({
+      x: origin.x,
+      y: origin.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2.5,
+      gravity: 0.16,
+      size: 4 + Math.random() * 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.3,
+      life: 0,
+      maxLife: 70 + Math.random() * 30,
+    });
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    particles.forEach((p) => {
+      p.life++;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity;
+      p.rotation += p.vr;
+      const alpha = Math.max(0, 1 - p.life / p.maxLife);
+      if (alpha > 0) alive = true;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(frame);
+    else canvas.remove();
+  }
+  frame();
+}
+
+applyShimmerToHeadings();
 switchScreen('dashboard');
