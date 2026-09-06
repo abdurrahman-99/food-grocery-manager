@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food/Grocery Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <h1 class="sidebar-brand">
+        <span class="sidebar-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffaa40"/>
+                <stop offset="100%" stop-color="#9c40ff"/>
+              </linearGradient>
+              <filter id="logoGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <rect x="2" y="6" width="20" height="14" rx="3" stroke="url(#logoGrad)" stroke-width="1.8" fill="none"/>
+            <path d="M7 6V4a3 3 0 0 1 6 0v2" stroke="url(#logoGrad)" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M10 12v5" stroke="url(#logoGrad)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M14 12v5" stroke="url(#logoGrad)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M6 10h4l1 4h6l1-4h4" stroke="url(#logoGrad)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </span>
+        Grocery Manager
+      </h1>
+      <ul class="nav-list">
+        <li><a href="#" data-screen="dashboard" class="nav-link active">Dashboard</a></li>
+        <li><a href="#" data-screen="inventory" class="nav-link">Inventory</a></li>
+        <li><a href="#" data-screen="reorder" class="nav-link">Reorder List</a></li>
+        <li><a href="#" data-screen="message" class="nav-link">Message</a></li>
+      </ul>
+      <a href="index.html" class="sidebar-back">← Back to Home</a>
+      <button id="addItemNavBtn" class="nav-cta">+ Add Item</button>
+    </nav>
+
+    <main class="content">
+      <section id="screen-dashboard" class="screen active">
+        <div class="screen-header">
+          <h2>Dashboard</h2>
+          <button id="dashboardActionBtn" class="btn-primary">Action</button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value number-ticker" id="statTotal">0</span>
+            <span class="stat-label">Total Items</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value number-ticker" id="statLow">0</span>
+            <span class="stat-label">Low Stock</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value number-ticker" id="statPending">0</span>
+            <span class="stat-label">Pending Reorder</span>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Low Stock Items</h3>
+          <ul id="dashboardLowList"></ul>
+          <p id="dashboardEmpty" class="empty-message">No low-stock items right now.</p>
+        </div>
+      </section>
+
+      <section id="screen-inventory" class="screen">
+        <div class="screen-header">
+          <h2>Inventory</h2>
+          <input type="text" id="searchInput" placeholder="Search items..." />
+        </div>
+        <ul id="inventoryList"></ul>
+        <p id="inventoryEmpty" class="empty-message">No items yet. Add your first item.</p>
+      </section>
+
+      <section id="screen-form" class="screen">
+        <h2 id="formTitle">Add Item</h2>
+        <form id="itemForm" class="form">
+          <input type="hidden" id="editId" />
+          <div class="form-group">
+            <label for="name">Name</label>
+            <div class="name-field-row">
+              <input type="text" id="name" required />
+              <button type="button" id="suggestDetailsBtn" class="btn-suggest">Suggest details</button>
+            </div>
+          </div>
+          <div class="beam-stage">
+            <svg id="aiBeam" class="ai-beam" aria-hidden="true"></svg>
+            <div class="ai-node" id="aiBeamNode">
+              <span class="ai-node-icon">✨</span>
+              <span class="ai-node-label">Gemini API</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="category">Category</label>
+            <input type="text" id="category" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="quantity">Quantity</label>
+              <input type="number" id="quantity" step="any" required />
+            </div>
+            <div class="form-group">
+              <label for="unit">Unit</label>
+              <input type="text" id="unit" placeholder="e.g. kg, L, pcs" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="minimumQuantity">Minimum Quantity</label>
+            <input type="number" id="minimumQuantity" step="any" required />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Save</button>
+            <button type="button" id="cancelFormBtn" class="btn-secondary">Cancel</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="screen-reorder" class="screen">
+        <h2>Reorder List</h2>
+        <ul id="reorderList"></ul>
+        <p id="reorderEmpty" class="empty-message">No items pending reorder.</p>
+        <button id="markAllOrderedBtn" class="btn-primary hidden">Mark All as Ordered</button>
+      </section>
+
+      <section id="screen-message" class="screen">
+        <h2>Reorder Message</h2>
+        <div class="panel">
+          <pre id="messageText"></pre>
+        </div>
+        <div class="message-actions">
+          <button id="copyMessageBtn" class="btn-primary">Copy Message</button>
+          <button id="markOrderedBtn" class="btn-secondary">Mark as Ordered</button>
+        </div>
+        <p id="copyStatus" class="copy-status"></p>
+      </section>
+    </main>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
